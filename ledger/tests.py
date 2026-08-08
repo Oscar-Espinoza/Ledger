@@ -235,3 +235,59 @@ class ExactSplitTests(TestCase):
         expense = self._expense(group, alice, Decimal("10.00"))
         with self.assertRaisesMessage(ValidationError, "one cent"):
             create_expense_shares(expense, {alice: Decimal("5.005"), bob: Decimal("4.995")})
+
+
+class PercentageSplitTests(TestCase):
+    def _expense(self, group, payer, amount):
+        return Expense.objects.create(
+            group=group,
+            payer=payer,
+            amount=amount,
+            description="Hotel",
+            split_type=Expense.SplitType.PERCENTAGE,
+        )
+
+    def test_valid_percentages(self):
+        group, (alice, bob, carol) = make_group("alice", "bob", "carol")
+        expense = self._expense(group, alice, Decimal("10.00"))
+        shares = create_expense_shares(
+            expense, {alice: Decimal("50"), bob: Decimal("30"), carol: Decimal("20")}
+        )
+        owed = {s.user: s.amount_owed for s in shares}
+        self.assertEqual(
+            owed, {alice: Decimal("5.00"), bob: Decimal("3.00"), carol: Decimal("2.00")}
+        )
+
+    def test_rounding_remainder_goes_to_first_member(self):
+        group, (alice, bob, carol) = make_group("alice", "bob", "carol")
+        expense = self._expense(group, alice, Decimal("10.00"))
+        shares = create_expense_shares(
+            expense, {alice: Decimal("33.33"), bob: Decimal("33.33"), carol: Decimal("33.34")}
+        )
+        owed = {s.user: s.amount_owed for s in shares}
+        self.assertEqual(
+            owed, {alice: Decimal("3.34"), bob: Decimal("3.33"), carol: Decimal("3.33")}
+        )
+        self.assertEqual(sum(owed.values()), Decimal("10.00"))
+
+    def test_percentages_under_100_raise(self):
+        group, (alice, bob, carol) = make_group("alice", "bob", "carol")
+        expense = self._expense(group, alice, Decimal("10.00"))
+        with self.assertRaisesMessage(ValidationError, "sum to exactly 100"):
+            create_expense_shares(
+                expense, {alice: Decimal("30"), bob: Decimal("30"), carol: Decimal("30")}
+            )
+
+    def test_percentages_over_100_raise(self):
+        group, (alice, bob, carol) = make_group("alice", "bob", "carol")
+        expense = self._expense(group, alice, Decimal("10.00"))
+        with self.assertRaisesMessage(ValidationError, "sum to exactly 100"):
+            create_expense_shares(
+                expense, {alice: Decimal("50"), bob: Decimal("40"), carol: Decimal("20")}
+            )
+
+    def test_negative_percentage_raises(self):
+        group, (alice, bob) = make_group("alice", "bob")
+        expense = self._expense(group, alice, Decimal("10.00"))
+        with self.assertRaisesMessage(ValidationError, "cannot be negative"):
+            create_expense_shares(expense, {alice: Decimal("150"), bob: Decimal("-50")})
