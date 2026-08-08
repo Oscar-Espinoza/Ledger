@@ -56,3 +56,42 @@ class GroupViewTests(TestCase):
         self.assertContains(response, "Lunch")
         self.assertContains(response, "5.00")
         self.assertContains(response, "-5.00")
+
+
+class InviteMemberTests(TestCase):
+    def setUp(self):
+        self.alice = login_user(self.client)
+        self.group = Group.objects.create(name="Trip")
+        self.group.members.add(self.alice)
+
+    def test_invite_adds_existing_user(self):
+        User.objects.create_user(username="bob")
+        response = self.client.post(
+            reverse("group-invite", args=[self.group.pk]), {"username": "bob"}
+        )
+        self.assertRedirects(response, reverse("group-detail", args=[self.group.pk]))
+        self.assertTrue(self.group.members.filter(username="bob").exists())
+
+    def test_unknown_username_shows_error(self):
+        response = self.client.post(
+            reverse("group-invite", args=[self.group.pk]),
+            {"username": "nobody"},
+            follow=True,
+        )
+        self.assertContains(response, "No user with that username.")
+        self.assertEqual(self.group.members.count(), 1)
+
+    def test_existing_member_shows_error(self):
+        response = self.client.post(
+            reverse("group-invite", args=[self.group.pk]),
+            {"username": "alice"},
+            follow=True,
+        )
+        self.assertContains(response, "already a member")
+
+    def test_non_member_cannot_invite(self):
+        outsider_group = Group.objects.create(name="Other")
+        response = self.client.post(
+            reverse("group-invite", args=[outsider_group.pk]), {"username": "alice"}
+        )
+        self.assertEqual(response.status_code, 404)

@@ -1,8 +1,11 @@
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
+from django.views import View
 from django.views.generic import CreateView, DetailView, ListView
 
-from .forms import GroupForm
+from .forms import GroupForm, InviteMemberForm
 from .models import Group
 from .services import compute_balances
 
@@ -43,4 +46,19 @@ class GroupDetailView(GroupQuerysetMixin, DetailView):
         context["expenses"] = self.object.expenses.select_related("payer").order_by(
             "-created_at"
         )
+        context["invite_form"] = InviteMemberForm(group=self.object)
         return context
+
+
+class InviteMemberView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        group = get_object_or_404(Group, pk=pk, members=request.user)
+        form = InviteMemberForm(request.POST, group=group)
+        if form.is_valid():
+            new_member = form.cleaned_data["username"]
+            group.members.add(new_member)
+            messages.success(request, f"Added {new_member.username} to the group.")
+        else:
+            for error in form.errors["username"]:
+                messages.error(request, error)
+        return redirect("group-detail", pk=group.pk)

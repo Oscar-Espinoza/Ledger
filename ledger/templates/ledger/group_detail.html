@@ -38,5 +38,22 @@
       </ul>
     </div>
   </div>
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">Members</div>
+      <div class="card-body">
+        <p class="mb-3">
+          {% for member in group.members.all %}
+            <span class="badge text-bg-light border me-1">{{ member.username }}</span>
+          {% endfor %}
+        </p>
+        <form method="post" action="{% url 'group-invite' group.pk %}" class="d-flex gap-2">
+          {% csrf_token %}
+          {{ invite_form.username }}
+          <button type="submit" class="btn btn-outline-primary">Invite</button>
+        </form>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}
