@@ -37,7 +37,7 @@ class InviteMemberForm(BootstrapFormMixin, forms.Form):
         try:
             user = User.objects.get(username=username)
         except User.DoesNotExist:
-            raise forms.ValidationError("No user with that username.")
+            raise forms.ValidationError("No user with that username.") from None
         if self.group.members.filter(pk=user.pk).exists():
             raise forms.ValidationError(f"{username} is already a member.")
         return user
