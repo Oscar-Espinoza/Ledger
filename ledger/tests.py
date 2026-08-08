@@ -6,7 +6,7 @@ from django.db import IntegrityError
 from django.test import TestCase
 
 from .models import Expense, ExpenseShare, Group
-from .services import create_expense_shares
+from .services import create_expense_shares, compute_balances
 
 User = get_user_model()
 
@@ -291,3 +291,50 @@ class PercentageSplitTests(TestCase):
         expense = self._expense(group, alice, Decimal("10.00"))
         with self.assertRaisesMessage(ValidationError, "cannot be negative"):
             create_expense_shares(expense, {alice: Decimal("150"), bob: Decimal("-50")})
+
+
+class ComputeBalancesTests(TestCase):
+    def test_payer_who_also_owes_a_share_nets_out(self):
+        group, (alice, bob, carol) = make_group("alice", "bob", "carol")
+        expense = Expense.objects.create(
+            group=group, payer=alice, amount=Decimal("30.00"), description="Groceries"
+        )
+        create_expense_shares(expense)
+        self.assertEqual(
+            compute_balances(group),
+            {alice: Decimal("20.00"), bob: Decimal("-10.00"), carol: Decimal("-10.00")},
+        )
+
+    def test_uninvolved_member_has_zero_balance(self):
+        group, (alice, bob, carol) = make_group("alice", "bob", "carol")
+        expense = Expense.objects.create(
+            group=group,
+            payer=alice,
+            amount=Decimal("10.00"),
+            description="Coffee",
+            split_type=Expense.SplitType.EXACT,
+        )
+        create_expense_shares(expense, {alice: Decimal("4.00"), bob: Decimal("6.00")})
+        self.assertEqual(compute_balances(group)[carol], Decimal("0.00"))
+
+    def test_group_with_no_expenses_is_all_zeros(self):
+        group, users = make_group("alice", "bob")
+        self.assertEqual(compute_balances(group), {u: Decimal("0.00") for u in users})
+
+    def test_balances_sum_to_zero_across_mixed_expenses(self):
+        group, (alice, bob, carol) = make_group("alice", "bob", "carol")
+        e1 = Expense.objects.create(
+            group=group, payer=alice, amount=Decimal("10.00"), description="A"
+        )
+        create_expense_shares(e1)
+        e2 = Expense.objects.create(
+            group=group,
+            payer=bob,
+            amount=Decimal("7.77"),
+            description="B",
+            split_type=Expense.SplitType.PERCENTAGE,
+        )
+        create_expense_shares(
+            e2, {alice: Decimal("33.33"), bob: Decimal("33.33"), carol: Decimal("33.34")}
+        )
+        self.assertEqual(sum(compute_balances(group).values()), Decimal("0.00"))

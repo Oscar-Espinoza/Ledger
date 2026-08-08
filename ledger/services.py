@@ -110,3 +110,18 @@ def _distribute_remainder(shares: dict, total: Decimal) -> None:
     remainder_cents = int((total - sum(shares.values())) / CENT)
     for user in sorted(shares, key=lambda u: u.pk)[:remainder_cents]:
         shares[user] += CENT
+
+
+def compute_balances(group) -> dict:
+    """Net balance per group member across all the group's expenses.
+
+    Positive means the member is owed money; negative means they owe.
+    Balances sum to zero because shares always sum exactly to each total.
+    """
+    balances = {member: Decimal("0.00") for member in group.members.all()}
+    expenses = group.expenses.select_related("payer").prefetch_related("shares__user")
+    for expense in expenses:
+        balances[expense.payer] += expense.amount
+        for share in expense.shares.all():
+            balances[share.user] -= share.amount_owed
+    return balances
