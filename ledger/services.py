@@ -7,6 +7,7 @@ results are deterministic and shares always sum exactly to the total.
 """
 
 from decimal import ROUND_FLOOR, Decimal
+from typing import NamedTuple
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -125,3 +126,37 @@ def compute_balances(group) -> dict:
         for share in expense.shares.all():
             balances[share.user] -= share.amount_owed
     return balances
+
+
+class Transaction(NamedTuple):
+    """One settling payment: debtor pays creditor amount."""
+
+    debtor: object
+    creditor: object
+    amount: Decimal
+
+
+def settle_up(group) -> list[Transaction]:
+    """Minimal transactions that settle all debts in the group.
+
+    Greedy min-cash-flow: repeatedly match the largest debtor with the
+    largest creditor (ties broken by ascending user id, so results are
+    deterministic). Produces at most n - 1 transactions. Persists nothing.
+    """
+    balances = compute_balances(group)
+    debtors = [[user, -balance] for user, balance in balances.items() if balance < 0]
+    creditors = [[user, balance] for user, balance in balances.items() if balance > 0]
+    transactions = []
+    while debtors and creditors:
+        debtors.sort(key=lambda entry: (-entry[1], entry[0].pk))
+        creditors.sort(key=lambda entry: (-entry[1], entry[0].pk))
+        debtor, creditor = debtors[0], creditors[0]
+        amount = min(debtor[1], creditor[1])
+        transactions.append(Transaction(debtor[0], creditor[0], amount))
+        debtor[1] -= amount
+        creditor[1] -= amount
+        if debtor[1] == 0:
+            debtors.pop(0)
+        if creditor[1] == 0:
+            creditors.pop(0)
+    return transactions

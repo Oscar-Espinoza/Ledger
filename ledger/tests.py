@@ -6,7 +6,7 @@ from django.db import IntegrityError
 from django.test import TestCase
 
 from .models import Expense, ExpenseShare, Group
-from .services import create_expense_shares, compute_balances
+from .services import Transaction, create_expense_shares, compute_balances, settle_up
 
 User = get_user_model()
 
@@ -338,3 +338,112 @@ class ComputeBalancesTests(TestCase):
             e2, {alice: Decimal("33.33"), bob: Decimal("33.33"), carol: Decimal("33.34")}
         )
         self.assertEqual(sum(compute_balances(group).values()), Decimal("0.00"))
+
+
+class SettleUpTests(TestCase):
+    def test_two_member_group_single_transaction(self):
+        group, (alice, bob) = make_group("alice", "bob")
+        expense = Expense.objects.create(
+            group=group, payer=alice, amount=Decimal("10.00"), description="Lunch"
+        )
+        create_expense_shares(expense)
+        self.assertEqual(settle_up(group), [Transaction(bob, alice, Decimal("5.00"))])
+
+    def test_four_person_group_with_mixed_debts(self):
+        group, (alice, bob, carol, dave) = make_group("alice", "bob", "carol", "dave")
+        e1 = Expense.objects.create(
+            group=group, payer=alice, amount=Decimal("100.00"), description="Cabin"
+        )
+        create_expense_shares(e1)  # everyone owes 25
+        e2 = Expense.objects.create(
+            group=group, payer=bob, amount=Decimal("40.00"), description="Gas"
+        )
+        create_expense_shares(e2)  # everyone owes 10
+        # Balances: alice +65, bob +5, carol -35, dave -35
+        self.assertEqual(
+            settle_up(group),
+            [
+                Transaction(carol, alice, Decimal("35.00")),
+                Transaction(dave, alice, Decimal("30.00")),
+                Transaction(dave, bob, Decimal("5.00")),
+            ],
+        )
+
+    def test_disjoint_debts_pair_off_in_two_transactions(self):
+        group, (alice, bob, carol, dave) = make_group("alice", "bob", "carol", "dave")
+        e1 = Expense.objects.create(
+            group=group,
+            payer=alice,
+            amount=Decimal("60.00"),
+            description="A",
+            split_type=Expense.SplitType.EXACT,
+        )
+        create_expense_shares(e1, {alice: Decimal("30.00"), bob: Decimal("30.00")})
+        e2 = Expense.objects.create(
+            group=group,
+            payer=carol,
+            amount=Decimal("40.00"),
+            description="B",
+            split_type=Expense.SplitType.EXACT,
+        )
+        create_expense_shares(e2, {carol: Decimal("20.00"), dave: Decimal("20.00")})
+        self.assertEqual(
+            settle_up(group),
+            [
+                Transaction(bob, alice, Decimal("30.00")),
+                Transaction(dave, carol, Decimal("20.00")),
+            ],
+        )
+
+    def test_member_with_zero_balance_appears_in_no_transactions(self):
+        group, (alice, bob, carol) = make_group("alice", "bob", "carol")
+        expense = Expense.objects.create(
+            group=group,
+            payer=alice,
+            amount=Decimal("10.00"),
+            description="Coffee",
+            split_type=Expense.SplitType.EXACT,
+        )
+        create_expense_shares(expense, {bob: Decimal("10.00")})
+        involved = {u for t in settle_up(group) for u in (t.debtor, t.creditor)}
+        self.assertNotIn(carol, involved)
+
+    def test_settled_group_produces_no_transactions(self):
+        group, (alice, bob) = make_group("alice", "bob")
+        for payer in (alice, bob):
+            expense = Expense.objects.create(
+                group=group, payer=payer, amount=Decimal("10.00"), description="Round"
+            )
+            create_expense_shares(expense)
+        self.assertEqual(settle_up(group), [])
+
+    def test_transactions_zero_out_all_balances(self):
+        group, (alice, bob, carol, dave) = make_group("alice", "bob", "carol", "dave")
+        e1 = Expense.objects.create(
+            group=group, payer=alice, amount=Decimal("99.99"), description="Odd"
+        )
+        create_expense_shares(e1)
+        e2 = Expense.objects.create(
+            group=group,
+            payer=bob,
+            amount=Decimal("55.55"),
+            description="Odder",
+            split_type=Expense.SplitType.PERCENTAGE,
+        )
+        create_expense_shares(
+            e2,
+            {
+                alice: Decimal("10"),
+                bob: Decimal("20"),
+                carol: Decimal("30"),
+                dave: Decimal("40"),
+            },
+        )
+        balances = compute_balances(group)
+        transactions = settle_up(group)
+        self.assertLessEqual(len(transactions), 3)  # at most n - 1
+        for t in transactions:
+            self.assertGreater(t.amount, 0)
+            balances[t.debtor] += t.amount
+            balances[t.creditor] -= t.amount
+        self.assertEqual(set(balances.values()), {Decimal("0.00")})
