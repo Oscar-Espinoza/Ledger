@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: ledger
+    runtime: docker
+    plan: free
+    healthCheckPath: /accounts/login/
+    autoDeploy: true
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: WEB_CONCURRENCY
+        value: "2"
