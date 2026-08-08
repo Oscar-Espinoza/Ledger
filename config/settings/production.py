@@ -13,6 +13,7 @@ if not SECRET_KEY:
 
 DEBUG = os.environ.get("DEBUG", "").lower() in ("1", "true", "yes")
 
+# A non-empty default keeps check --deploy from emitting security.W020.
 ALLOWED_HOSTS = [host for host in os.environ.get("ALLOWED_HOSTS", "localhost").split(",") if host]
 
 # Render injects the app's public hostname (e.g. ledger.onrender.com).
@@ -42,5 +43,20 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 MAILERS = {
     "default": {
         "BACKEND": "django.core.mail.backends.smtp.EmailBackend",
+    },
+}
+
+# Render captures stdout, so log records must reach it to be visible at all.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
     },
 }

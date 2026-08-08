@@ -83,3 +83,8 @@ class ProductionSettingsTests(unittest.TestCase):
         self.assertTrue(settings.SESSION_COOKIE_SECURE)
         self.assertTrue(settings.CSRF_COOKIE_SECURE)
         self.assertGreater(settings.SECURE_HSTS_SECONDS, 0)
+
+    def test_logging_sends_root_records_to_console(self):
+        settings = load_production()
+        self.assertEqual(settings.LOGGING["root"]["handlers"], ["console"])
+        self.assertEqual(settings.LOGGING["handlers"]["console"]["class"], "logging.StreamHandler")
