@@ -13,7 +13,7 @@ if not SECRET_KEY:
 
 DEBUG = os.environ.get("DEBUG", "").lower() in ("1", "true", "yes")
 
-ALLOWED_HOSTS = [host for host in os.environ.get("ALLOWED_HOSTS", "").split(",") if host]
+ALLOWED_HOSTS = [host for host in os.environ.get("ALLOWED_HOSTS", "localhost").split(",") if host]
 
 # Render injects the app's public hostname (e.g. ledger.onrender.com).
 RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
@@ -39,14 +39,8 @@ CSRF_COOKIE_SECURE = True
 SECURE_HSTS_SECONDS = 60 * 60 * 24 * 30
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 
-# Email configuration for production
 MAILERS = {
     "default": {
         "BACKEND": "django.core.mail.backends.smtp.EmailBackend",
-        "HOST": os.environ.get("EMAIL_HOST", "localhost"),
-        "PORT": int(os.environ.get("EMAIL_PORT", "25")),
-        "USER": os.environ.get("EMAIL_USER", ""),
-        "PASSWORD": os.environ.get("EMAIL_PASSWORD", ""),
-        "USE_TLS": os.environ.get("EMAIL_USE_TLS", "false").lower() == "true",
     },
 }
