@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}{{ group.name }} — Ledger{% endblock %}
+{% block content %}
+<h1 class="h3 mb-4">{{ group.name }}</h1>
+<div class="row g-4">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">Balances</div>
+      <table class="table table-sm mb-0">
+        <tbody>
+          {% for member, balance in balances %}
+            <tr>
+              <td>{{ member.username }}</td>
+              <td class="text-end {% if balance > 0 %}text-success{% elif balance < 0 %}text-danger{% endif %}">
+                {{ balance }}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">Expenses</div>
+      <ul class="list-group list-group-flush">
+        {% for expense in expenses %}
+          <li class="list-group-item d-flex justify-content-between">
+            <span>
+              {{ expense.description }}
+              <small class="text-muted">paid by {{ expense.payer.username }}</small>
+            </span>
+            <span>{{ expense.amount }}</span>
+          </li>
+        {% empty %}
+          <li class="list-group-item text-muted">No expenses yet.</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

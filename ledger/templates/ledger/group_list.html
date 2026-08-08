@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}My groups — Ledger{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">My groups</h1>
+  <a class="btn btn-primary" href="{% url 'group-create' %}">New group</a>
+</div>
+{% if groups %}
+  <div class="list-group">
+    {% for group in groups %}
+      <a class="list-group-item list-group-item-action d-flex justify-content-between"
+         href="{% url 'group-detail' group.pk %}">
+        {{ group.name }}
+        <span class="badge text-bg-secondary">
+          {{ group.members.count }} member{{ group.members.count|pluralize }}
+        </span>
+      </a>
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="text-muted">You have no groups yet. Create one to get started.</p>
+{% endif %}
+{% endblock %}
