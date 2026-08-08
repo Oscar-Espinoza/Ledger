@@ -84,7 +84,12 @@ def _equal_shares(amount: Decimal, members: list) -> dict:
 
 
 def _exact_shares(amount: Decimal, split_data: dict) -> dict:
-    raise NotImplementedError  # Task 5
+    for value in split_data.values():
+        if value != value.quantize(CENT):
+            raise ValidationError("Exact shares cannot be more precise than one cent.")
+    if sum(split_data.values()) != amount:
+        raise ValidationError("Exact shares must sum to the expense amount.")
+    return dict(split_data)
 
 def _percentage_shares(amount: Decimal, split_data: dict) -> dict:
     raise NotImplementedError  # Task 6

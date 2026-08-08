@@ -163,3 +163,75 @@ class ExpenseValidationTests(TestCase):
         )
         with self.assertRaisesMessage(ValidationError, "no members"):
             create_expense_shares(expense)
+
+
+class ExactSplitTests(TestCase):
+    def _expense(self, group, payer, amount):
+        return Expense.objects.create(
+            group=group,
+            payer=payer,
+            amount=amount,
+            description="Dinner",
+            split_type=Expense.SplitType.EXACT,
+        )
+
+    def test_valid_exact_split(self):
+        group, (alice, bob, carol) = make_group("alice", "bob", "carol")
+        expense = self._expense(group, alice, Decimal("10.00"))
+        shares = create_expense_shares(
+            expense, {alice: Decimal("5.00"), bob: Decimal("3.00"), carol: Decimal("2.00")}
+        )
+        owed = {s.user: s.amount_owed for s in shares}
+        self.assertEqual(
+            owed, {alice: Decimal("5.00"), bob: Decimal("3.00"), carol: Decimal("2.00")}
+        )
+
+    def test_zero_share_means_member_owes_nothing(self):
+        group, (alice, bob) = make_group("alice", "bob")
+        expense = self._expense(group, alice, Decimal("10.00"))
+        shares = create_expense_shares(expense, {alice: Decimal("10.00"), bob: Decimal("0.00")})
+        owed = {s.user: s.amount_owed for s in shares}
+        self.assertEqual(owed[bob], Decimal("0.00"))
+
+    def test_participant_subset_is_allowed(self):
+        group, (alice, bob, carol) = make_group("alice", "bob", "carol")
+        expense = self._expense(group, alice, Decimal("10.00"))
+        shares = create_expense_shares(expense, {alice: Decimal("4.00"), bob: Decimal("6.00")})
+        self.assertEqual({s.user for s in shares}, {alice, bob})
+
+    def test_shares_summing_under_total_raise(self):
+        group, (alice, bob) = make_group("alice", "bob")
+        expense = self._expense(group, alice, Decimal("10.00"))
+        with self.assertRaisesMessage(ValidationError, "must sum to the expense amount"):
+            create_expense_shares(expense, {alice: Decimal("5.00"), bob: Decimal("4.00")})
+
+    def test_shares_summing_over_total_raise(self):
+        group, (alice, bob) = make_group("alice", "bob")
+        expense = self._expense(group, alice, Decimal("10.00"))
+        with self.assertRaisesMessage(ValidationError, "must sum to the expense amount"):
+            create_expense_shares(expense, {alice: Decimal("5.00"), bob: Decimal("6.00")})
+
+    def test_negative_share_raises(self):
+        group, (alice, bob) = make_group("alice", "bob")
+        expense = self._expense(group, alice, Decimal("10.00"))
+        with self.assertRaisesMessage(ValidationError, "cannot be negative"):
+            create_expense_shares(expense, {alice: Decimal("15.00"), bob: Decimal("-5.00")})
+
+    def test_missing_split_data_raises(self):
+        group, (alice, bob) = make_group("alice", "bob")
+        expense = self._expense(group, alice, Decimal("10.00"))
+        with self.assertRaisesMessage(ValidationError, "requires split_data"):
+            create_expense_shares(expense)
+
+    def test_non_member_participant_raises(self):
+        group, (alice,) = make_group("alice")
+        outsider = User.objects.create_user(username="outsider")
+        expense = self._expense(group, alice, Decimal("10.00"))
+        with self.assertRaisesMessage(ValidationError, "group members"):
+            create_expense_shares(expense, {outsider: Decimal("10.00")})
+
+    def test_subcent_share_raises(self):
+        group, (alice, bob) = make_group("alice", "bob")
+        expense = self._expense(group, alice, Decimal("10.00"))
+        with self.assertRaisesMessage(ValidationError, "one cent"):
+            create_expense_shares(expense, {alice: Decimal("5.005"), bob: Decimal("4.995")})
