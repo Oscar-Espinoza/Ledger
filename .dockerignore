@@ -1,0 +1,14 @@
+.venv/
+.git/
+.gitignore
+__pycache__/
+*.py[cod]
+db.sqlite3
+staticfiles/
+.ruff_cache/
+.superpowers/
+docs/
+Dockerfile
+.dockerignore
+render.yaml
+README.md
