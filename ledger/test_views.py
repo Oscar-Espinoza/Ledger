@@ -95,3 +95,91 @@ class InviteMemberTests(TestCase):
             reverse("group-invite", args=[outsider_group.pk]), {"username": "alice"}
         )
         self.assertEqual(response.status_code, 404)
+
+
+class AddExpenseTests(TestCase):
+    def setUp(self):
+        self.alice = login_user(self.client)
+        self.bob = User.objects.create_user(username="bob")
+        self.group = Group.objects.create(name="Trip")
+        self.group.members.set([self.alice, self.bob])
+        self.url = reverse("expense-create", args=[self.group.pk])
+
+    def _post(self, **extra):
+        data = {
+            "description": "Dinner",
+            "amount": "10.00",
+            "payer": str(self.alice.pk),
+            "split_type": "equal",
+        }
+        data.update(extra)
+        return self.client.post(self.url, data)
+
+    def test_equal_split_creates_expense_and_shares(self):
+        response = self._post()
+        self.assertRedirects(response, reverse("group-detail", args=[self.group.pk]))
+        expense = Expense.objects.get()
+        owed = {s.user: s.amount_owed for s in expense.shares.all()}
+        self.assertEqual(owed, {self.alice: Decimal("5.00"), self.bob: Decimal("5.00")})
+
+    def test_exact_split_uses_share_fields(self):
+        self._post(
+            split_type="exact",
+            **{
+                f"share_{self.alice.pk}": "7.50",
+                f"share_{self.bob.pk}": "2.50",
+            },
+        )
+        expense = Expense.objects.get()
+        owed = {s.user: s.amount_owed for s in expense.shares.all()}
+        self.assertEqual(owed, {self.alice: Decimal("7.50"), self.bob: Decimal("2.50")})
+
+    def test_percentage_split_uses_share_fields(self):
+        self._post(
+            split_type="percentage",
+            **{
+                f"share_{self.alice.pk}": "25",
+                f"share_{self.bob.pk}": "75",
+            },
+        )
+        expense = Expense.objects.get()
+        owed = {s.user: s.amount_owed for s in expense.shares.all()}
+        self.assertEqual(owed, {self.alice: Decimal("2.50"), self.bob: Decimal("7.50")})
+
+    def test_exact_split_sum_mismatch_rolls_back(self):
+        response = self._post(
+            split_type="exact",
+            **{
+                f"share_{self.alice.pk}": "9.00",
+                f"share_{self.bob.pk}": "2.00",
+            },
+        )
+        self.assertContains(response, "must sum to the expense amount")
+        self.assertEqual(Expense.objects.count(), 0)
+
+    def test_percentage_not_100_rolls_back(self):
+        response = self._post(
+            split_type="percentage",
+            **{
+                f"share_{self.alice.pk}": "50",
+                f"share_{self.bob.pk}": "40",
+            },
+        )
+        self.assertContains(response, "sum to exactly 100")
+        self.assertEqual(Expense.objects.count(), 0)
+
+    def test_shares_with_equal_split_rejected(self):
+        response = self._post(**{f"share_{self.alice.pk}": "10.00"})
+        self.assertContains(response, "not accepted for equal splits")
+        self.assertEqual(Expense.objects.count(), 0)
+
+    def test_payer_choices_limited_to_members(self):
+        outsider = User.objects.create_user(username="mallory")
+        response = self.client.get(self.url)
+        payer_qs = response.context["form"].fields["payer"].queryset
+        self.assertNotIn(outsider, payer_qs)
+
+    def test_non_member_gets_404(self):
+        other = Group.objects.create(name="Other")
+        response = self.client.get(reverse("expense-create", args=[other.pk]))
+        self.assertEqual(response.status_code, 404)

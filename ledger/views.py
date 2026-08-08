@@ -1,13 +1,15 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.views import View
-from django.views.generic import CreateView, DetailView, ListView
+from django.views.generic import CreateView, DetailView, FormView, ListView
 
-from .forms import GroupForm, InviteMemberForm
+from .forms import ExpenseForm, GroupForm, InviteMemberForm
 from .models import Group
-from .services import compute_balances
+from .services import compute_balances, create_expense_shares
 
 
 class GroupQuerysetMixin(LoginRequiredMixin):
@@ -62,3 +64,37 @@ class InviteMemberView(LoginRequiredMixin, View):
             for error in form.errors["username"]:
                 messages.error(request, error)
         return redirect("group-detail", pk=group.pk)
+
+
+class ExpenseCreateView(LoginRequiredMixin, FormView):
+    template_name = "ledger/expense_form.html"
+    form_class = ExpenseForm
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated:
+            self.group = get_object_or_404(Group, pk=kwargs["pk"], members=request.user)
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["group"] = self.group
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["group"] = self.group
+        return context
+
+    def form_valid(self, form):
+        expense = form.save(commit=False)
+        expense.group = self.group
+        try:
+            with transaction.atomic():
+                expense.save()
+                create_expense_shares(expense, form.split_data())
+        except ValidationError as exc:
+            for message in exc.messages:
+                form.add_error(None, message)
+            return self.form_invalid(form)
+        messages.success(self.request, "Expense added.")
+        return redirect("group-detail", pk=self.group.pk)

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Add expense — Ledger{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-7">
+    <div class="card">
+      <div class="card-body">
+        <h1 class="h4 card-title">Add expense to {{ group.name }}</h1>
+        {% if form.non_field_errors %}
+          <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+        {% endif %}
+        <form method="post" novalidate>
+          {% csrf_token %}
+          <div class="mb-3">{{ form.description.as_field_group }}</div>
+          <div class="mb-3">{{ form.amount.as_field_group }}</div>
+          <div class="mb-3">{{ form.payer.as_field_group }}</div>
+          <div class="mb-3">{{ form.split_type.as_field_group }}</div>
+          <fieldset class="mb-3 border rounded p-3" id="share-fields">
+            <legend class="fs-6">Per-member shares</legend>
+            <p class="form-text">
+              Amounts for an exact split, percentages for a percentage split.
+              Leave blank for an equal split.
+            </p>
+            {% for field in form.share_fields %}
+              <div class="mb-2">{{ field.as_field_group }}</div>
+            {% endfor %}
+          </fieldset>
+          <button type="submit" class="btn btn-primary">Add expense</button>
+        </form>
+        <script>
+          const splitType = document.getElementById("id_split_type");
+          const shareFields = document.getElementById("share-fields");
+          function toggleShares() {
+            shareFields.hidden = splitType.value === "equal";
+          }
+          splitType.addEventListener("change", toggleShares);
+          toggleShares();
+        </script>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

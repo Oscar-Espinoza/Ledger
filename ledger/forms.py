@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth import get_user_model
 
-from .models import Group
+from .models import Expense, Group
 
 User = get_user_model()
 
@@ -41,3 +41,46 @@ class InviteMemberForm(BootstrapFormMixin, forms.Form):
         if self.group.members.filter(pk=user.pk).exists():
             raise forms.ValidationError(f"{username} is already a member.")
         return user
+
+
+class ExpenseForm(BootstrapFormMixin, forms.ModelForm):
+    """Expense fields plus one optional share input per group member.
+
+    Share inputs are amounts for 'exact' splits and percentages for
+    'percentage' splits; they stay blank for 'equal'. All money rules are
+    enforced by ledger.services — this form only collects the values.
+    """
+
+    class Meta:
+        model = Expense
+        fields = ("description", "amount", "payer", "split_type")
+
+    def __init__(self, *args, group, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.group = group
+        members = group.members.order_by("username")
+        self.fields["payer"].queryset = members
+        self._share_fields = []
+        for member in members:
+            name = f"share_{member.pk}"
+            self.fields[name] = forms.DecimalField(
+                required=False,
+                max_digits=12,
+                decimal_places=2,
+                label=member.username,
+                widget=forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+            )
+            self._share_fields.append((member, name))
+
+    def split_data(self):
+        """Collected share values as {user: Decimal}, or None if all blank."""
+        data = {
+            member: self.cleaned_data[name]
+            for member, name in self._share_fields
+            if self.cleaned_data.get(name) is not None
+        }
+        return data or None
+
+    def share_fields(self):
+        for _, name in self._share_fields:
+            yield self[name]

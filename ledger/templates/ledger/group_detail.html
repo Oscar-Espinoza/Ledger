@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 {% block title %}{{ group.name }} — Ledger{% endblock %}
 {% block content %}
-<h1 class="h3 mb-4">{{ group.name }}</h1>
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">{{ group.name }}</h1>
+  <a class="btn btn-primary" href="{% url 'expense-create' group.pk %}">Add expense</a>
+</div>
 <div class="row g-4">
   <div class="col-md-6">
     <div class="card">
