@@ -92,6 +92,7 @@ def _exact_shares(amount: Decimal, split_data: dict) -> dict:
         raise ValidationError("Exact shares must sum to the expense amount.")
     return dict(split_data)
 
+
 def _percentage_shares(amount: Decimal, split_data: dict) -> dict:
     if sum(split_data.values()) != ONE_HUNDRED:
         raise ValidationError("Percentages must sum to exactly 100.")
@@ -101,6 +102,7 @@ def _percentage_shares(amount: Decimal, split_data: dict) -> dict:
     }
     _distribute_remainder(shares, amount)
     return shares
+
 
 def _distribute_remainder(shares: dict, total: Decimal) -> None:
     """Top up shares in ascending user-id order until they sum to total.

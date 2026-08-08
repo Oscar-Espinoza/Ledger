@@ -488,9 +488,7 @@ class ExpenseValidationTests(TestCase):
 
     def test_subcent_precision_raises(self):
         group, (alice,) = make_group("alice")
-        expense = Expense(
-            group=group, payer=alice, amount=Decimal("10.005"), description="Bad"
-        )
+        expense = Expense(group=group, payer=alice, amount=Decimal("10.005"), description="Bad")
         with self.assertRaisesMessage(ValidationError, "one cent"):
             create_expense_shares(expense)
 
@@ -618,8 +616,10 @@ def _equal_shares(amount: Decimal, members: list) -> dict:
 def _exact_shares(amount: Decimal, split_data: dict) -> dict:
     raise NotImplementedError  # Task 5
 
+
 def _percentage_shares(amount: Decimal, split_data: dict) -> dict:
     raise NotImplementedError  # Task 6
+
 
 def _distribute_remainder(shares: dict, total: Decimal) -> None:
     """Top up shares in ascending user-id order until they sum to total.

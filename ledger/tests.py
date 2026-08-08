@@ -1,12 +1,13 @@
 from decimal import Decimal
 
+from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.test import TestCase
 
 from .models import Expense, ExpenseShare, Group
-from .services import Transaction, create_expense_shares, compute_balances, settle_up
+from .services import Transaction, compute_balances, create_expense_shares, settle_up
 
 User = get_user_model()
 
@@ -134,9 +135,7 @@ class ExpenseValidationTests(TestCase):
 
     def test_subcent_precision_raises(self):
         group, (alice,) = make_group("alice")
-        expense = Expense(
-            group=group, payer=alice, amount=Decimal("10.005"), description="Bad"
-        )
+        expense = Expense(group=group, payer=alice, amount=Decimal("10.005"), description="Bad")
         with self.assertRaisesMessage(ValidationError, "one cent"):
             create_expense_shares(expense)
 
@@ -447,3 +446,9 @@ class SettleUpTests(TestCase):
             balances[t.debtor] += t.amount
             balances[t.creditor] -= t.amount
         self.assertEqual(set(balances.values()), {Decimal("0.00")})
+
+
+class AdminRegistrationTests(TestCase):
+    def test_all_models_are_registered(self):
+        for model in (Group, Expense, ExpenseShare):
+            self.assertTrue(admin.site.is_registered(model), model)
