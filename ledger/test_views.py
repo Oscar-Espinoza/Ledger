@@ -183,3 +183,30 @@ class AddExpenseTests(TestCase):
         other = Group.objects.create(name="Other")
         response = self.client.get(reverse("expense-create", args=[other.pk]))
         self.assertEqual(response.status_code, 404)
+
+
+class SettleUpViewTests(TestCase):
+    def setUp(self):
+        self.alice = login_user(self.client)
+        self.bob = User.objects.create_user(username="bob")
+        self.group = Group.objects.create(name="Trip")
+        self.group.members.set([self.alice, self.bob])
+
+    def test_shows_suggested_transactions(self):
+        expense = Expense.objects.create(
+            group=self.group, payer=self.alice, amount=Decimal("10.00"), description="Cab"
+        )
+        create_expense_shares(expense)
+        response = self.client.get(reverse("group-settle", args=[self.group.pk]))
+        self.assertContains(response, "bob")
+        self.assertContains(response, "alice")
+        self.assertContains(response, "5.00")
+
+    def test_settled_group_shows_empty_state(self):
+        response = self.client.get(reverse("group-settle", args=[self.group.pk]))
+        self.assertContains(response, "no payments needed")
+
+    def test_non_member_gets_404(self):
+        other = Group.objects.create(name="Other")
+        response = self.client.get(reverse("group-settle", args=[other.pk]))
+        self.assertEqual(response.status_code, 404)

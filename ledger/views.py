@@ -5,11 +5,11 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.views import View
-from django.views.generic import CreateView, DetailView, FormView, ListView
+from django.views.generic import CreateView, DetailView, FormView, ListView, TemplateView
 
 from .forms import ExpenseForm, GroupForm, InviteMemberForm
 from .models import Group
-from .services import compute_balances, create_expense_shares
+from .services import compute_balances, create_expense_shares, settle_up
 
 
 class GroupQuerysetMixin(LoginRequiredMixin):
@@ -45,9 +45,7 @@ class GroupDetailView(GroupQuerysetMixin, DetailView):
         context = super().get_context_data(**kwargs)
         balances = compute_balances(self.object)
         context["balances"] = sorted(balances.items(), key=lambda item: item[0].username)
-        context["expenses"] = self.object.expenses.select_related("payer").order_by(
-            "-created_at"
-        )
+        context["expenses"] = self.object.expenses.select_related("payer").order_by("-created_at")
         context["invite_form"] = InviteMemberForm(group=self.object)
         return context
 
@@ -98,3 +96,14 @@ class ExpenseCreateView(LoginRequiredMixin, FormView):
             return self.form_invalid(form)
         messages.success(self.request, "Expense added.")
         return redirect("group-detail", pk=self.group.pk)
+
+
+class SettleUpView(LoginRequiredMixin, TemplateView):
+    template_name = "ledger/settle_up.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        group = get_object_or_404(Group, pk=self.kwargs["pk"], members=self.request.user)
+        context["group"] = group
+        context["transactions"] = settle_up(group)
+        return context

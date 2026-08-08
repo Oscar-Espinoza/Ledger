@@ -3,7 +3,10 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
   <h1 class="h3 mb-0">{{ group.name }}</h1>
-  <a class="btn btn-primary" href="{% url 'expense-create' group.pk %}">Add expense</a>
+  <div class="d-flex gap-2">
+    <a class="btn btn-primary" href="{% url 'expense-create' group.pk %}">Add expense</a>
+    <a class="btn btn-outline-success" href="{% url 'group-settle' group.pk %}">Settle up</a>
+  </div>
 </div>
 <div class="row g-4">
   <div class="col-md-6">

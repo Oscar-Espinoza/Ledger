@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Settle up — Ledger{% endblock %}
+{% block content %}
+<h1 class="h3 mb-4">Settle up: {{ group.name }}</h1>
+{% if transactions %}
+  <table class="table table-striped w-auto">
+    <thead>
+      <tr><th>Who pays</th><th>Receives</th><th class="text-end">Amount</th></tr>
+    </thead>
+    <tbody>
+      {% for t in transactions %}
+        <tr>
+          <td>{{ t.debtor.username }}</td>
+          <td>{{ t.creditor.username }}</td>
+          <td class="text-end">{{ t.amount }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <div class="alert alert-success">Everyone is settled up — no payments needed.</div>
+{% endif %}
+<a class="btn btn-outline-secondary" href="{% url 'group-detail' group.pk %}">Back to group</a>
+{% endblock %}
