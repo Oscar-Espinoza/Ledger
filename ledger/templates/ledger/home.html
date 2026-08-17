@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Ledger — Split group expenses simply{% endblock %}
+{% block content %}
+<section class="landing-hero row align-items-center g-5" aria-labelledby="landing-heading">
+  <div class="col-lg-6">
+    <p class="eyebrow">Shared spending, made clear</p>
+    <h1 id="landing-heading">Split expenses without the spreadsheet</h1>
+    <p class="hero-copy">Ledger records what a group spends, divides each expense equally or by exact amounts or percentages, and calculates the simplest way to settle up.</p>
+    <div class="d-flex flex-column flex-sm-row gap-2 hero-actions">
+      <a class="btn btn-primary" href="{% url 'signup' %}">Create a free account</a>
+      <a class="btn btn-outline-secondary" href="{% url 'login' %}">Log in</a>
+    </div>
+    <p class="privacy-note"><span aria-hidden="true">●</span> Groups are private to their members.</p>
+  </div>
+  <div class="col-lg-6">
+    <div class="product-preview" aria-label="Example Ledger group for a weekend trip">
+      <div class="preview-heading">
+        <div>
+          <span class="preview-kicker">Your group</span>
+          <h2 class="h4 mb-0">Weekend trip</h2>
+        </div>
+        <span class="preview-members">3 members</span>
+      </div>
+      <div class="preview-summary">
+        <span class="preview-summary-label">Your balance</span>
+        <strong>You are owed 42.00</strong>
+        <small>Amounts use your group's agreed currency.</small>
+      </div>
+      <div class="preview-expenses" aria-label="Recent example expenses">
+        <div class="preview-row">
+          <span><strong>Cabin</strong><small>Paid by you · equal split</small></span>
+          <strong>180.00</strong>
+        </div>
+        <div class="preview-row">
+          <span><strong>Groceries</strong><small>Paid by Sam · exact split</small></span>
+          <strong>64.00</strong>
+        </div>
+        <div class="preview-row">
+          <span><strong>Fuel</strong><small>Paid by Mia · percentage split</small></span>
+          <strong>48.00</strong>
+        </div>
+      </div>
+      <div class="preview-settlement">Suggested next step: <strong>Sam pays you 28.00</strong></div>
+    </div>
+  </div>
+</section>
+
+<section class="landing-section" aria-labelledby="workflow-heading">
+  <div class="section-heading">
+    <p class="eyebrow">One shared record</p>
+    <h2 id="workflow-heading">From the first expense to the final repayment</h2>
+  </div>
+  <ol class="workflow-list landing-workflow">
+    <li>
+      <span class="step-number" aria-hidden="true">1</span>
+      <span><strong>Create a group</strong><small>Start a private space for a trip, home, or event.</small></span>
+    </li>
+    <li>
+      <span class="step-number" aria-hidden="true">2</span>
+      <span><strong>Add people and expenses</strong><small>Record who paid and choose the split that fits.</small></span>
+    </li>
+    <li>
+      <span class="step-number" aria-hidden="true">3</span>
+      <span><strong>Settle up</strong><small>See a short list of suggested payments when you're ready.</small></span>
+    </li>
+  </ol>
+</section>
+
+<section class="landing-section split-explainer row g-4 align-items-center" aria-labelledby="split-heading">
+  <div class="col-lg-5">
+    <p class="eyebrow">Flexible when it matters</p>
+    <h2 id="split-heading">Use the split that matches the expense</h2>
+    <p class="text-secondary">Dinner can be exact, rent can be percentage-based, and a taxi can be shared equally. Ledger keeps every result exact to the cent.</p>
+  </div>
+  <div class="col-lg-7">
+    <div class="split-methods">
+      <article><span class="method-icon" aria-hidden="true">=</span><h3>Equal</h3><p>Divide the amount across everyone.</p></article>
+      <article><span class="method-icon" aria-hidden="true">#</span><h3>Exact</h3><p>Enter each person's precise share.</p></article>
+      <article><span class="method-icon" aria-hidden="true">%</span><h3>Percentage</h3><p>Allocate the total by proportion.</p></article>
+    </div>
+  </div>
+</section>
+
+<section class="landing-cta" aria-labelledby="cta-heading">
+  <div>
+    <h2 id="cta-heading">Keep the group clear on who paid</h2>
+    <p>Accounts keep groups private and make friends findable by username. Ledger suggests repayments, but never transfers money.</p>
+  </div>
+  <a class="btn btn-primary" href="{% url 'signup' %}">Start with a group</a>
+</section>
+{% endblock %}

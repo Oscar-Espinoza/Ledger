@@ -1,19 +1,41 @@
 {% extends "base.html" %}
 {% block title %}Log in — Ledger{% endblock %}
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-md-5">
-    <div class="card">
-      <div class="card-body">
-        <h1 class="h4 card-title">Log in</h1>
-        <form method="post" novalidate>
-          {% csrf_token %}
-          {{ form.as_div }}
-          <button type="submit" class="btn btn-primary mt-2">Log in</button>
-        </form>
-        <p class="mt-3 mb-0"><small>No account? <a href="{% url 'signup' %}">Sign up</a></small></p>
-      </div>
+<div class="auth-shell row g-0">
+  <section class="col-lg-5 auth-context" aria-labelledby="login-context-heading">
+    <p class="eyebrow">Welcome back</p>
+    <h1 id="login-context-heading">Pick up where your group left off</h1>
+    <p>See shared expenses, current balances, and the repayments Ledger suggests for every private group you belong to.</p>
+    <ul class="context-list">
+      <li><span aria-hidden="true">✓</span> Equal, exact, and percentage splits</li>
+      <li><span aria-hidden="true">✓</span> Clear balances for every member</li>
+      <li><span aria-hidden="true">✓</span> No payments moved by Ledger</li>
+    </ul>
+  </section>
+  <section class="col-lg-7 auth-form-panel" aria-labelledby="login-heading">
+    <div class="auth-form-inner">
+      <h2 class="h3" id="login-heading">Log in to Ledger</h2>
+      <p class="text-secondary mb-4">Use the username and password you chose when signing up.</p>
+      {% if form.non_field_errors %}
+        <div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>
+      {% endif %}
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+        <div class="mb-3">
+          <label class="form-label" for="{{ form.username.id_for_label }}">Username</label>
+          {{ form.username }}
+          {% for error in form.username.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="mb-4">
+          <label class="form-label" for="{{ form.password.id_for_label }}">Password</label>
+          {{ form.password }}
+          {% for error in form.password.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Log in</button>
+      </form>
+      <p class="auth-switch">New to Ledger? <a href="{% url 'signup' %}">Create an account</a></p>
     </div>
-  </div>
+  </section>
 </div>
 {% endblock %}

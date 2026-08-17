@@ -20,6 +20,11 @@ class GroupForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = Group
         fields = ("name",)
+        widgets = {
+            "name": forms.TextInput(
+                attrs={"placeholder": "e.g. Weekend trip", "autocomplete": "off"}
+            )
+        }
 
 
 class InviteMemberForm(BootstrapFormMixin, forms.Form):
@@ -54,6 +59,14 @@ class ExpenseForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = Expense
         fields = ("description", "amount", "payer", "split_type")
+        widgets = {
+            "description": forms.TextInput(
+                attrs={"placeholder": "e.g. Dinner", "autocomplete": "off"}
+            ),
+            "amount": forms.NumberInput(
+                attrs={"step": "0.01", "min": "0.01", "inputmode": "decimal"}
+            ),
+        }
 
     def __init__(self, *args, group, **kwargs):
         super().__init__(*args, **kwargs)
@@ -68,7 +81,14 @@ class ExpenseForm(BootstrapFormMixin, forms.ModelForm):
                 max_digits=12,
                 decimal_places=2,
                 label=member.username,
-                widget=forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+                widget=forms.NumberInput(
+                    attrs={
+                        "class": "form-control share-input",
+                        "step": "0.01",
+                        "min": "0",
+                        "inputmode": "decimal",
+                    }
+                ),
             )
             self._share_fields.append((member, name))
 

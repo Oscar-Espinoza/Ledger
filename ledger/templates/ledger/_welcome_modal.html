@@ -1,0 +1,34 @@
+<div class="modal fade" id="welcomeModal" tabindex="-1" aria-labelledby="welcomeModalLabel" aria-describedby="welcomeModalDescription" data-auto-show="{% if show_welcome %}true{% else %}false{% endif %}">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow mb-1">A quick start</p>
+          <h2 class="modal-title h4" id="welcomeModalLabel">Welcome to Ledger</h2>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close help"></button>
+      </div>
+      <div class="modal-body" id="welcomeModalDescription">
+        <p class="text-secondary">Keep the shared costs in one private place, then let Ledger work out who should repay whom.</p>
+        <ol class="workflow-list compact-workflow">
+          <li>
+            <span class="step-number" aria-hidden="true">1</span>
+            <span><strong>Create a group</strong><small>Name the trip, household, or event.</small></span>
+          </li>
+          <li>
+            <span class="step-number" aria-hidden="true">2</span>
+            <span><strong>Add people and expenses</strong><small>Friends need an existing Ledger account before you can invite their username.</small></span>
+          </li>
+          <li>
+            <span class="step-number" aria-hidden="true">3</span>
+            <span><strong>Settle up</strong><small>Ledger suggests the simplest repayments; it never moves money.</small></span>
+          </li>
+        </ol>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-link text-secondary" data-bs-dismiss="modal">Not now</button>
+        <a class="btn btn-primary" href="{% url 'group-create' %}">Create your first group</a>
+      </div>
+    </div>
+  </div>
+</div>

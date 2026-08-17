@@ -1,18 +1,35 @@
 {% extends "base.html" %}
-{% block title %}New group — Ledger{% endblock %}
+{% block title %}Create a group — Ledger{% endblock %}
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-md-6">
-    <div class="card">
-      <div class="card-body">
-        <h1 class="h4 card-title">New group</h1>
-        <form method="post" novalidate>
-          {% csrf_token %}
-          {{ form.as_div }}
-          <button type="submit" class="btn btn-primary mt-2">Create group</button>
-        </form>
-      </div>
-    </div>
+<nav class="back-nav" aria-label="Breadcrumb"><a href="{% url 'group-list' %}"><span aria-hidden="true">←</span> Your groups</a></nav>
+<div class="task-layout row g-4">
+  <div class="col-lg-7">
+    <section class="surface-card task-card" aria-labelledby="group-form-heading">
+      <p class="eyebrow">A new shared space</p>
+      <h1 class="h2" id="group-form-heading">Create a group</h1>
+      <p class="text-secondary mb-4">Use a name everyone will recognize. You can invite members after the group is created.</p>
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+        <div class="mb-4">
+          <label class="form-label" for="{{ form.name.id_for_label }}">Group name</label>
+          {{ form.name }}
+          <div class="form-text">For example: Weekend trip, Apartment 4B, or Friday dinner.</div>
+          {% for error in form.name.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="d-flex flex-column-reverse flex-sm-row gap-2">
+          <a class="btn btn-outline-secondary" href="{% url 'group-list' %}">Cancel</a>
+          <button type="submit" class="btn btn-primary">Create group</button>
+        </div>
+      </form>
+    </section>
   </div>
+  <aside class="col-lg-5" aria-label="What happens next">
+    <div class="task-aside">
+      <h2 class="h5">What happens next?</h2>
+      <p>You'll be the first member. Add friends by username, then start recording expenses as they happen.</p>
+      <p class="mb-0"><strong>Private by default:</strong> only members can open this group.</p>
+    </div>
+  </aside>
 </div>
 {% endblock %}

@@ -1,18 +1,46 @@
 {% extends "base.html" %}
 {% block title %}Sign up — Ledger{% endblock %}
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-md-5">
-    <div class="card">
-      <div class="card-body">
-        <h1 class="h4 card-title">Sign up</h1>
-        <form method="post" novalidate>
-          {% csrf_token %}
-          {{ form.as_div }}
-          <button type="submit" class="btn btn-primary mt-2">Sign up</button>
-        </form>
-      </div>
+<div class="auth-shell row g-0">
+  <section class="col-lg-5 auth-context" aria-labelledby="signup-context-heading">
+    <p class="eyebrow">Start a shared record</p>
+    <h1 id="signup-context-heading">A private place for group expenses</h1>
+    <p>Your account keeps groups visible only to their members and gives friends a username they can invite.</p>
+    <div class="context-callout">
+      <strong>Before inviting someone</strong>
+      <span>They'll need to create their own Ledger account. Then add the exact username they chose.</span>
     </div>
-  </div>
+  </section>
+  <section class="col-lg-7 auth-form-panel" aria-labelledby="signup-heading">
+    <div class="auth-form-inner">
+      <h2 class="h3" id="signup-heading">Create your account</h2>
+      <p class="text-secondary mb-4">You'll go straight to creating your first group.</p>
+      {% if form.non_field_errors %}
+        <div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>
+      {% endif %}
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label" for="{{ form.username.id_for_label }}">Username</label>
+          {{ form.username }}
+          <div class="form-text">Friends will use this exact name to invite you.</div>
+          {% for error in form.username.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="{{ form.password1.id_for_label }}">Password</label>
+          {{ form.password1 }}
+          {% if form.password1.help_text %}<div class="form-text password-help">{{ form.password1.help_text|safe }}</div>{% endif %}
+          {% for error in form.password1.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="mb-4">
+          <label class="form-label" for="{{ form.password2.id_for_label }}">Confirm password</label>
+          {{ form.password2 }}
+          {% for error in form.password2.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Create account</button>
+      </form>
+      <p class="auth-switch">Already have an account? <a href="{% url 'login' %}">Log in</a></p>
+    </div>
+  </section>
 </div>
 {% endblock %}

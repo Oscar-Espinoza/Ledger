@@ -1,65 +1,114 @@
 {% extends "base.html" %}
 {% block title %}{{ group.name }} — Ledger{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h1 class="h3 mb-0">{{ group.name }}</h1>
-  <div class="d-flex gap-2">
+<nav class="back-nav" aria-label="Breadcrumb"><a href="{% url 'group-list' %}"><span aria-hidden="true">←</span> Your groups</a></nav>
+<header class="group-header d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3">
+  <div>
+    <p class="eyebrow mb-1">Shared group</p>
+    <h1>{{ group.name }}</h1>
+    <p class="group-summary mb-0">
+      {% if user_balance_status == "owed" %}
+        You are owed <strong class="balance-positive">{{ user_balance_amount }}</strong>
+      {% elif user_balance_status == "owes" %}
+        You owe <strong class="balance-negative">{{ user_balance_amount }}</strong>
+      {% else %}
+        <strong>You are settled up</strong>
+      {% endif %}
+    </p>
+  </div>
+  <div class="group-actions d-flex flex-column flex-sm-row gap-2">
     <a class="btn btn-primary" href="{% url 'expense-create' group.pk %}">Add expense</a>
-    <a class="btn btn-outline-success" href="{% url 'group-settle' group.pk %}">Settle up</a>
+    <a class="btn btn-outline-primary" href="{% url 'group-settle' group.pk %}">Settle up</a>
   </div>
-</div>
-<div class="row g-4">
-  <div class="col-md-6">
-    <div class="card">
-      <div class="card-header">Balances</div>
-      <table class="table table-sm mb-0">
-        <tbody>
-          {% for member, balance in balances %}
-            <tr>
-              <td>{{ member.username }}</td>
-              <td class="text-end {% if balance > 0 %}text-success{% elif balance < 0 %}text-danger{% endif %}">
-                {{ balance }}
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-  <div class="col-md-6">
-    <div class="card">
-      <div class="card-header">Expenses</div>
-      <ul class="list-group list-group-flush">
-        {% for expense in expenses %}
-          <li class="list-group-item d-flex justify-content-between">
-            <span>
-              {{ expense.description }}
-              <small class="text-muted">paid by {{ expense.payer.username }}</small>
-            </span>
-            <span>{{ expense.amount }}</span>
-          </li>
-        {% empty %}
-          <li class="list-group-item text-muted">No expenses yet.</li>
+</header>
+
+<p class="currency-note">Amounts use the currency your group has agreed on. Ledger stays currency-agnostic.</p>
+
+<div class="row g-4 group-detail-grid">
+  <section class="col-lg-5" aria-labelledby="balances-heading">
+    <div class="surface-card h-100">
+      <div class="card-section-heading">
+        <div>
+          <p class="eyebrow mb-1">Across all expenses</p>
+          <h2 class="h4 mb-0" id="balances-heading">Balances</h2>
+        </div>
+        <button type="button" class="help-control" data-bs-toggle="popover" data-bs-title="Reading balances" data-bs-content="Owed means the group should repay that person. Owes means that person should repay the group. A settled balance is zero." aria-label="Help reading positive and negative balances">?</button>
+      </div>
+      <div class="balance-list">
+        {% for row in balance_rows %}
+          <div class="balance-row">
+            <span class="member-avatar" aria-hidden="true">{{ row.member.username|first|upper }}</span>
+            <span class="balance-person"><strong>{{ row.member.username }}</strong>{% if row.member == user %}<small>You</small>{% endif %}</span>
+            {% if row.status == "owed" %}
+              <span class="balance-amount balance-positive"><small>is owed</small>{{ row.amount }}</span>
+            {% elif row.status == "owes" %}
+              <span class="balance-amount balance-negative"><small>owes</small>{{ row.amount }}</span>
+            {% else %}
+              <span class="balance-amount balance-neutral"><small>settled</small>{{ row.amount }}</span>
+            {% endif %}
+          </div>
         {% endfor %}
-      </ul>
-    </div>
-  </div>
-  <div class="col-md-6">
-    <div class="card">
-      <div class="card-header">Members</div>
-      <div class="card-body">
-        <p class="mb-3">
-          {% for member in group.members.all %}
-            <span class="badge text-bg-light border me-1">{{ member.username }}</span>
-          {% endfor %}
-        </p>
-        <form method="post" action="{% url 'group-invite' group.pk %}" class="d-flex gap-2">
-          {% csrf_token %}
-          {{ invite_form.username }}
-          <button type="submit" class="btn btn-outline-primary">Invite</button>
-        </form>
       </div>
     </div>
-  </div>
+  </section>
+
+  <section class="col-lg-7" aria-labelledby="expenses-heading">
+    <div class="surface-card h-100">
+      <div class="card-section-heading">
+        <div>
+          <p class="eyebrow mb-1">Most recent first</p>
+          <h2 class="h4 mb-0" id="expenses-heading">Expenses</h2>
+        </div>
+        {% if expenses %}<a class="small-link" href="{% url 'expense-create' group.pk %}">Add another</a>{% endif %}
+      </div>
+      {% if expenses %}
+        <div class="expense-list">
+          {% for expense in expenses %}
+            <article class="expense-row">
+              <span class="expense-icon" aria-hidden="true">{{ expense.description|first|upper }}</span>
+              <span class="expense-details">
+                <strong>{{ expense.description }}</strong>
+                <small>Paid by {{ expense.payer.username }} · {{ expense.get_split_type_display }} split</small>
+              </span>
+              <strong class="expense-amount">{{ expense.amount }}</strong>
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="inline-empty">
+          <h3 class="h6">No expenses yet</h3>
+          <p>Record who paid, the amount, and how the group should share it.</p>
+          <a class="btn btn-outline-primary btn-sm" href="{% url 'expense-create' group.pk %}">Add the first expense</a>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="col-12" aria-labelledby="members-heading">
+    <div class="surface-card">
+      <div class="card-section-heading members-heading">
+        <div>
+          <p class="eyebrow mb-1">Private to this group</p>
+          <h2 class="h4 mb-0" id="members-heading">Members</h2>
+        </div>
+        <button type="button" class="help-control" data-bs-toggle="popover" data-bs-title="Inviting a member" data-bs-content="Enter an existing Ledger username exactly. If your friend has no account yet, ask them to sign up first." aria-label="Help inviting a member">?</button>
+      </div>
+      <div class="member-list" aria-label="Current group members">
+        {% for member in group.members.all %}
+          <span class="member-item"><span class="member-avatar" aria-hidden="true">{{ member.username|first|upper }}</span>{{ member.username }}{% if member == user %}<small>You</small>{% endif %}</span>
+        {% endfor %}
+      </div>
+      <form method="post" action="{% url 'group-invite' group.pk %}" class="invite-form row g-2 align-items-end">
+        {% csrf_token %}
+        <div class="col-md">
+          <label class="form-label" for="{{ invite_form.username.id_for_label }}">Invite by username</label>
+          {{ invite_form.username }}
+          <div class="form-text" id="invite-help">They must already have a Ledger account.</div>
+          {% for error in invite_form.username.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="col-md-auto"><button type="submit" class="btn btn-outline-primary w-100">Add member</button></div>
+      </form>
+    </div>
+  </section>
 </div>
 {% endblock %}

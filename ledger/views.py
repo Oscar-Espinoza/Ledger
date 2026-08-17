@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.views import View
@@ -23,6 +24,33 @@ class GroupListView(GroupQuerysetMixin, ListView):
     model = Group
     context_object_name = "groups"
 
+    def get_queryset(self):
+        return (
+            Group.objects
+            .annotate(
+                member_count=Count("members", distinct=True),
+                expense_count=Count("expenses", distinct=True),
+            )
+            .filter(members=self.request.user)
+            .order_by("name")
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["show_welcome"] = self.request.session.pop(
+            "show_welcome_onboarding", False
+        )
+        return context
+
+
+class HomeView(TemplateView):
+    template_name = "ledger/home.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated:
+            return redirect("group-list")
+        return super().dispatch(request, *args, **kwargs)
+
 
 class GroupCreateView(LoginRequiredMixin, CreateView):
     model = Group
@@ -31,6 +59,7 @@ class GroupCreateView(LoginRequiredMixin, CreateView):
     def form_valid(self, form):
         response = super().form_valid(form)
         self.object.members.add(self.request.user)
+        messages.success(self.request, f"{self.object.name} is ready.")
         return response
 
     def get_success_url(self):
@@ -45,6 +74,19 @@ class GroupDetailView(GroupQuerysetMixin, DetailView):
         context = super().get_context_data(**kwargs)
         balances = compute_balances(self.object)
         context["balances"] = sorted(balances.items(), key=lambda item: item[0].username)
+        context["balance_rows"] = [
+            {
+                "member": member,
+                "amount": abs(balance),
+                "status": "owed" if balance > 0 else "owes" if balance < 0 else "settled",
+            }
+            for member, balance in context["balances"]
+        ]
+        user_balance = balances[self.request.user]
+        context["user_balance_amount"] = abs(user_balance)
+        context["user_balance_status"] = (
+            "owed" if user_balance > 0 else "owes" if user_balance < 0 else "settled"
+        )
         context["expenses"] = self.object.expenses.select_related("payer").order_by("-created_at")
         context["invite_form"] = InviteMemberForm(group=self.object)
         return context
@@ -58,10 +100,14 @@ class InviteMemberView(LoginRequiredMixin, View):
             new_member = form.cleaned_data["username"]
             group.members.add(new_member)
             messages.success(request, f"Added {new_member.username} to the group.")
-        else:
-            for error in form.errors["username"]:
-                messages.error(request, error)
-        return redirect("group-detail", pk=group.pk)
+            return redirect("group-detail", pk=group.pk)
+
+        detail_view = GroupDetailView()
+        detail_view.setup(request, pk=group.pk)
+        detail_view.object = group
+        context = detail_view.get_context_data()
+        context["invite_form"] = form
+        return detail_view.render_to_response(context)
 
 
 class ExpenseCreateView(LoginRequiredMixin, FormView):

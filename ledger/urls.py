@@ -5,12 +5,14 @@ from .views import (
     GroupCreateView,
     GroupDetailView,
     GroupListView,
+    HomeView,
     InviteMemberView,
     SettleUpView,
 )
 
 urlpatterns = [
-    path("", GroupListView.as_view(), name="group-list"),
+    path("", HomeView.as_view(), name="home"),
+    path("groups/", GroupListView.as_view(), name="group-list"),
     path("groups/new/", GroupCreateView.as_view(), name="group-create"),
     path("groups/<int:pk>/", GroupDetailView.as_view(), name="group-detail"),
     path("groups/<int:pk>/invite/", InviteMemberView.as_view(), name="group-invite"),

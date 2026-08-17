@@ -19,7 +19,7 @@ def login_user(client, username="alice"):
 class GroupViewTests(TestCase):
     def test_group_list_requires_login(self):
         response = self.client.get(reverse("group-list"))
-        self.assertRedirects(response, f"{reverse('login')}?next=/")
+        self.assertRedirects(response, f"{reverse('login')}?next={reverse('group-list')}")
 
     def test_group_list_shows_only_my_groups(self):
         alice = login_user(self.client)
@@ -29,6 +29,29 @@ class GroupViewTests(TestCase):
         response = self.client.get(reverse("group-list"))
         self.assertContains(response, "Trip")
         self.assertNotContains(response, "Secret")
+
+    def test_group_list_uses_annotated_member_and_expense_counts(self):
+        alice = login_user(self.client)
+        bob = User.objects.create_user(username="bob")
+        group = Group.objects.create(name="Trip")
+        group.members.set([alice, bob])
+        Expense.objects.create(
+            group=group, payer=alice, amount=Decimal("10.00"), description="Lunch"
+        )
+
+        response = self.client.get(reverse("group-list"))
+
+        listed_group = response.context["groups"][0]
+        self.assertEqual(listed_group.member_count, 2)
+        self.assertEqual(listed_group.expense_count, 1)
+        self.assertContains(response, "2 members")
+        self.assertContains(response, "1 expense")
+
+    def test_empty_dashboard_has_actionable_checklist(self):
+        login_user(self.client)
+        response = self.client.get(reverse("group-list"))
+        self.assertContains(response, "Create your first group")
+        self.assertContains(response, "Invite friends by their existing Ledger username")
 
     def test_create_group_adds_creator_as_member(self):
         alice = login_user(self.client)
@@ -54,8 +77,19 @@ class GroupViewTests(TestCase):
         create_expense_shares(expense)
         response = self.client.get(reverse("group-detail", args=[group.pk]))
         self.assertContains(response, "Lunch")
+        self.assertContains(response, "You are owed")
+        self.assertContains(response, "is owed")
+        self.assertContains(response, "owes")
         self.assertContains(response, "5.00")
-        self.assertContains(response, "-5.00")
+        self.assertContains(response, "Help reading positive and negative balances")
+
+    def test_create_group_success_uses_toast_markup(self):
+        login_user(self.client)
+        response = self.client.post(
+            reverse("group-create"), {"name": "Ski house"}, follow=True
+        )
+        self.assertContains(response, "Ski house is ready.")
+        self.assertContains(response, "data-app-toast")
 
 
 class InviteMemberTests(TestCase):
@@ -79,7 +113,14 @@ class InviteMemberTests(TestCase):
             follow=True,
         )
         self.assertContains(response, "No user with that username.")
+        self.assertContains(response, "invalid-feedback d-block")
+        self.assertNotContains(response, "data-app-toast")
         self.assertEqual(self.group.members.count(), 1)
+
+    def test_detail_explains_existing_username_requirement(self):
+        response = self.client.get(reverse("group-detail", args=[self.group.pk]))
+        self.assertContains(response, "They must already have a Ledger account.")
+        self.assertContains(response, "Help inviting a member")
 
     def test_existing_member_shows_error(self):
         response = self.client.post(
@@ -179,6 +220,12 @@ class AddExpenseTests(TestCase):
         payer_qs = response.context["form"].fields["payer"].queryset
         self.assertNotIn(outsider, payer_qs)
 
+    def test_expense_form_explains_split_methods_and_live_total(self):
+        response = self.client.get(self.url)
+        self.assertContains(response, "Help choosing a split method")
+        self.assertContains(response, 'id="share-total"')
+        self.assertContains(response, "Use your group's agreed currency.")
+
     def test_non_member_gets_404(self):
         other = Group.objects.create(name="Other")
         response = self.client.get(reverse("expense-create", args=[other.pk]))
@@ -201,12 +248,30 @@ class SettleUpViewTests(TestCase):
         self.assertContains(response, "bob")
         self.assertContains(response, "alice")
         self.assertContains(response, "5.00")
+        self.assertContains(response, "Ledger does not transfer money")
+        self.assertContains(response, "Help understanding settlement suggestions")
 
     def test_settled_group_shows_empty_state(self):
         response = self.client.get(reverse("group-settle", args=[self.group.pk]))
-        self.assertContains(response, "no payments needed")
+        self.assertContains(response, "No payments are needed")
 
     def test_non_member_gets_404(self):
         other = Group.objects.create(name="Other")
         response = self.client.get(reverse("group-settle", args=[other.pk]))
         self.assertEqual(response.status_code, 404)
+
+
+class HomeViewTests(TestCase):
+    def test_anonymous_home_is_public_landing_page(self):
+        response = self.client.get(reverse("home"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Split expenses without the spreadsheet")
+        self.assertContains(response, "Weekend trip")
+        self.assertContains(response, "Create a group")
+        self.assertContains(response, "Groups are private to their members")
+        self.assertContains(response, "ledger/css/app.css")
+
+    def test_authenticated_home_redirects_to_groups(self):
+        login_user(self.client)
+        response = self.client.get(reverse("home"))
+        self.assertRedirects(response, reverse("group-list"), fetch_redirect_response=False)
